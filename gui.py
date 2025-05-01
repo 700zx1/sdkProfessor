@@ -1,4 +1,5 @@
 import sys
+import os
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QPushButton, QTextEdit, QFileDialog, QLabel
 )
@@ -21,7 +22,7 @@ class SDKProfessorApp(QWidget):
         self.quiz_output = QTextEdit()
         self.quiz_output.setReadOnly(True)
 
-        self.load_button = QPushButton("Open Python File")
+        self.load_button = QPushButton("Open Code File")
         self.load_button.clicked.connect(self.load_code)
 
         self.layout.addWidget(QLabel("Explanation:"))
@@ -32,22 +33,48 @@ class SDKProfessorApp(QWidget):
         self.setLayout(self.layout)
 
     def load_code(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open Python File", "", "Python Files (*.py)")
-        if file_path:
-            self.explain_output.clear()
-            self.quiz_output.clear()
-            sections = extract_code_sections(file_path)
-            for section in sections:
-                explanation = generate_explanations(section)
-                self.explain_output.append(explanation)
-                speak_text(explanation)
+        try:
+            file_path, _ = QFileDialog.getOpenFileName(self, "Open Code File", "", "All Files (*.*)")
+            if file_path:
+                self.explain_output.clear()
+                self.quiz_output.clear()
+                
+                # Get sections and file type
+                sections, file_type = extract_code_sections(file_path)
+                if not sections:
+                    self.explain_output.append("No code sections found in the file.")
+                    return
 
-                quiz = generate_quiz(section)
-                for q in quiz:
-                    self.quiz_output.append(q["question"])
-                    for opt in q["options"]:
-                        self.quiz_output.append(f" - {opt}")
-                    self.quiz_output.append("")
+                # Display file information
+                self.explain_output.append(f"\n=== File Analysis ===\n")
+                self.explain_output.append(f"File: {os.path.basename(file_path)}")
+                self.explain_output.append(f"Type: {file_type}")
+                self.explain_output.append("-" * 50)
+
+                for section in sections:
+                    # Generate explanation with file type context
+                    prompt = f"""You are a professor teaching code to a beginner student. 
+                    Explain the following {file_type} code line by line in an easy-to-understand way:
+                    
+                    {section}
+                    """
+                    
+                    explanation = generate_explanations(prompt)
+                    self.explain_output.append(f"\n=== Code Section ===\n")
+                    self.explain_output.append(explanation)
+                    speak_text(explanation)
+
+                    # Generate quiz with file type context
+                    quiz = generate_quiz(section)
+                    if quiz:
+                        self.quiz_output.append(f"\n=== Quiz Section ===\n")
+                        for q in quiz:
+                            self.quiz_output.append(f"Question: {q["question"]}")
+                            for i, opt in enumerate(q["options"]):
+                                self.quiz_output.append(f"  {i + 1}. {opt}")
+                            self.quiz_output.append("")
+        except Exception as e:
+            self.explain_output.append(f"Error: {str(e)}")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

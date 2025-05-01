@@ -1,0 +1,76 @@
+import ast import os import openai import pyttsx3 import random import re
+
+parser.py
+
+def extract_code_sections(file_path): with open(file_path, 'r') as file: source = file.read()
+
+tree = ast.parse(source)
+code_sections = []
+
+for node in ast.walk(tree):
+    if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+        start_line = node.lineno - 1
+        end_line = max([getattr(n, 'lineno', start_line) for n in ast.walk(node)])
+        code = "\n".join(source.splitlines()[start_line:end_line])
+        code_sections.append(code)
+
+return code_sections
+
+explain.py
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+def generate_explanations(code): prompt = ( "You are a knowledgeable professor teaching a beginner student." " Explain the following Python code step-by-step using analogies where possible." " Emphasize what each part does, common pitfalls, and when this might be used in real-world code:" f"\n\n{code}\n\n" ) response = openai.ChatCompletion.create( model="gpt-4", messages=[{"role": "user", "content": prompt}], temperature=0.6 ) return response['choices'][0]['message']['content']
+
+tts_engine.py
+
+def speak_text(text): engine = pyttsx3.init() engine.setProperty('rate', 160) engine.say(text) engine.runAndWait()
+
+quiz.py
+
+def generate_quiz(code): lines = [line.strip() for line in code.splitlines() if line.strip() and not line.startswith("#")] questions = []
+
+for line in lines:
+    question = {
+        "question": f"What does the following line do?\n{line}",
+        "options": [line, "Raises an error", "Does nothing", "Creates a syntax error"],
+        "answer": line
+    }
+    random.shuffle(question["options"])
+    questions.append(question)
+
+if not questions:
+    questions.append({
+        "question": "What is the purpose of this section of code?",
+        "options": ["To perform input/output", "To define a function", "To import libraries", "None of the above"],
+        "answer": "To define a function"
+    })
+
+return questions
+
+main.py
+
+if name == "main": import sys if len(sys.argv) < 2: print("Usage: python main.py <path_to_code_file>") sys.exit(1)
+
+code_sections = extract_code_sections(sys.argv[1])
+
+for idx, section in enumerate(code_sections, 1):
+    print(f"\n--- Section {idx} ---\n")
+    explanation = generate_explanations(section)
+    print("Explanation:\n", explanation)
+    speak_text(explanation)
+
+    quiz = generate_quiz(section)
+    for q in quiz:
+        print("\nQuiz:", q["question"])
+        for i, opt in enumerate(q["options"]):
+            print(f"  {i + 1}. {opt}")
+        try:
+            user_input = int(input("Your answer (number): ")) - 1
+            if q["options"][user_input] == q["answer"]:
+                print("Correct!\n")
+            else:
+                print(f"Incorrect. Correct answer: {q['answer']}\n")
+        except (ValueError, IndexError):
+            print(f"Invalid input. Correct answer: {q['answer']}\n")
+
