@@ -19,7 +19,8 @@ def get_file_type(file_path):
         '.ts': 'TypeScript',
         '.html': 'HTML',
         '.css': 'CSS',
-        '.sql': 'SQL'
+        '.sql': 'SQL',
+        '.sh': 'Shell Script'
     }
     
     return file_types.get(ext, 'Unknown')
@@ -68,6 +69,8 @@ def extract_code_sections(file_path):
             elif file_type == 'TypeScript' and (stripped_line.startswith('//') or stripped_line.startswith('/*')):
                 continue
             elif file_type == 'SQL' and stripped_line.startswith('--'):
+                continue
+            elif file_type == 'Shell Script' and (stripped_line.startswith('#') or stripped_line.startswith('##')):
                 continue
 
             # Start a new section when we encounter a non-empty line
